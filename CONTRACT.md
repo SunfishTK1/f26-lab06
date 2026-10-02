@@ -48,8 +48,12 @@ delegates with `notes = null`. Nothing under `consumer/` changed.
 
 **If your prediction was wrong,** say what you missed.
 
+It was right.
+
 **Is an additive change always safe in Java?** One case where adding something
 to an API still breaks a caller, if you can name one.
+
+MY ANSWER: A new overload that has the same number of parameters with a null argument can make it ambigious what is being called.
 
 ---
 
@@ -60,10 +64,17 @@ to an API still breaks a caller, if you can name one.
 **Will the untouched consumer still compile and pass?** Yes or no, and if no,
 which module goes red and whether at compile time or test time.
 
+MY Answer: No. because the consumer will likelly fail.  since createBooking is removed.
+
 **Where.** Name the call sites you expect to be affected, if any.
+
+api.createBooking is affected
 
 **What about the tests in `api/`, after you update them?** And whether their
 result is evidence about the consumer.
+
+Those should pass because they call a method that keepsmthe same behavior.
+
 
 ### Step 1: after the fold
 
