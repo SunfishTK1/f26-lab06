@@ -121,8 +121,47 @@ who can detect a contract break.
 
 **What you added.** The signatures that came back, and what they delegate to.
 
+Both came back on `BookingApi` as `@Deprecated` `default` methods, so
+implementations only have to provide the new method:
+
+```java
+@Deprecated
+default Booking createBooking(String roomId, long startMinute, long endMinute,
+                              String waitlistKey)
+    // -> createBooking(BookingRequest.of(roomId, startMinute, endMinute)
+    //                      .withWaitlistKey(waitlistKey))
+
+@Deprecated
+default Booking createBooking(String roomId, long startMinute, long endMinute,
+                              String waitlistKey, String notes)
+    // -> createBooking(BookingRequest.of(roomId, startMinute, endMinute)
+    //                      .withWaitlistKey(waitlistKey).withNotes(notes))
+```
+
+Each has a `@deprecated` javadoc tag naming `createBooking(BookingRequest)` as
+the replacement.
+
 **The warnings.** Paste one deprecation warning line from the build log (from
 a `mvn -B clean test` run, since a rerun with nothing to compile prints none).
+
+`mvn -B clean test` (absolute path prefix trimmed):
+
+```
+[INFO] Building lab06-api 1.0.0                                           [2/3]
+[INFO] Compiling 5 source files with javac [debug deprecation release 21] to target/classes
+[INFO] Compiling 1 source file with javac [debug deprecation release 21] to target/test-classes
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Building lab06-consumer 1.0.0                                      [3/3]
+[INFO] Compiling 1 source file with javac [debug deprecation release 21] to target/classes
+[WARNING] consumer/src/main/java/edu/cmu/cs214/frontdesk/FrontDesk.java:[27,19] createBooking(java.lang.String,long,long,java.lang.String) in edu.cmu.cs214.booking.BookingApi has been deprecated
+[WARNING] consumer/src/main/java/edu/cmu/cs214/frontdesk/FrontDesk.java:[33,19] createBooking(java.lang.String,long,long,java.lang.String) in edu.cmu.cs214.booking.BookingApi has been deprecated
+[INFO] Compiling 1 source file with javac [debug deprecation release 21] to target/test-classes
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+[INFO] lab06-booking-parent ............................... SUCCESS
+[INFO] lab06-api .......................................... SUCCESS
+[INFO] lab06-consumer ..................................... SUCCESS
+[INFO] BUILD SUCCESS
+```
 
 **What the deprecation path resolves.** Who can now build that could not build
 during step 1, and who is on which schedule.

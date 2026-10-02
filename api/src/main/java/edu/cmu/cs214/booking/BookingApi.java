@@ -63,6 +63,41 @@ public interface BookingApi {
     Booking createBooking(BookingRequest request);
 
     /**
+     * Books a room from positional arguments. Behaves exactly as
+     * {@code createBooking(BookingRequest.of(roomId, startMinute, endMinute)
+     * .withWaitlistKey(waitlistKey))}, including the null return and the
+     * exceptions.
+     *
+     * @deprecated Use {@link #createBooking(BookingRequest)} with
+     *     {@link BookingRequest#of(String, long, long)} and
+     *     {@link BookingRequest#withWaitlistKey(String)}.
+     */
+    @Deprecated
+    default Booking createBooking(String roomId, long startMinute, long endMinute,
+                                  String waitlistKey) {
+        return createBooking(BookingRequest.of(roomId, startMinute, endMinute)
+                .withWaitlistKey(waitlistKey));
+    }
+
+    /**
+     * Books a room from positional arguments, with notes. Behaves exactly as
+     * {@code createBooking(BookingRequest.of(roomId, startMinute, endMinute)
+     * .withWaitlistKey(waitlistKey).withNotes(notes))}, including the null
+     * return and the exceptions.
+     *
+     * @deprecated Use {@link #createBooking(BookingRequest)} with
+     *     {@link BookingRequest#of(String, long, long)},
+     *     {@link BookingRequest#withWaitlistKey(String)}, and
+     *     {@link BookingRequest#withNotes(String)}.
+     */
+    @Deprecated
+    default Booking createBooking(String roomId, long startMinute, long endMinute,
+                                  String waitlistKey, String notes) {
+        return createBooking(BookingRequest.of(roomId, startMinute, endMinute)
+                .withWaitlistKey(waitlistKey).withNotes(notes));
+    }
+
+    /**
      * Returns every non-cancelled booking for one room, ordered by start minute.
      *
      * <p>Both CONFIRMED and WAITLISTED bookings are included; CANCELLED
