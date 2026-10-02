@@ -24,6 +24,28 @@ MY ANSWER WHY: Both of the consumer's createBooking calls pass 4 arguements, so 
 
 **The result.** What the build printed for each module.
 
+Change: added `createBooking(String roomId, long startMinute, long endMinute,
+String waitlistKey, String notes)` to `BookingApi`, and `getNotes()` to
+`Booking`. The old 4-arg `createBooking` in `InMemoryBookingService` now
+delegates with `notes = null`. Nothing under `consumer/` changed.
+
+`mvn -B clean test`:
+
+```
+[INFO] Building lab06-api 1.0.0                                           [2/3]
+[INFO] Compiling 4 source files with javac [debug deprecation release 21] to target/classes
+[INFO] Compiling 1 source file with javac [debug deprecation release 21] to target/test-classes
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Building lab06-consumer 1.0.0                                      [3/3]
+[INFO] Compiling 1 source file with javac [debug deprecation release 21] to target/classes
+[INFO] Compiling 1 source file with javac [debug deprecation release 21] to target/test-classes
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+[INFO] lab06-booking-parent ............................... SUCCESS
+[INFO] lab06-api .......................................... SUCCESS
+[INFO] lab06-consumer ..................................... SUCCESS
+[INFO] BUILD SUCCESS
+```
+
 **If your prediction was wrong,** say what you missed.
 
 **Is an additive change always safe in Java?** One case where adding something
