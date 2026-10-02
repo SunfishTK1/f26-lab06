@@ -13,8 +13,12 @@ Keep it short and specific. Point at methods, call sites, and error text.
 
 **Will the consumer, untouched, still compile and pass?** Yes or no.
 
+MY ANSWER: YES
+
 **Why.** What does the compiler do with the consumer's existing call sites once
 the new overload exists?
+
+MY ANSWER WHY: Both of the consumer's createBooking calls pass 4 arguements, so Java can still use the 4-arguement method, and not need to consider the 5-arguement overload.  The only class that has to add new methods is InMemoryBooking Service in api/, since FrontDesk just calls the interface and doesn not implemnt it, so nothing in consumer breaks.
 
 ### What happened
 
