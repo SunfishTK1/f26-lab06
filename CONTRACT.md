@@ -117,6 +117,13 @@ new call. Nothing under `consumer/` changed.
 **Which module's tests ran, and which did not.** And what that tells you about
 who can detect a contract break.
 
+The api module's 5 tests ran and passed. The consumer's 7 tests never ran:
+Maven stopped `lab06-consumer` at the compile step on `FrontDesk.java:27` and
+`:33`, before reaching the test phase. So a green api suite says nothing about
+compatibility. I rewrote those tests to the new call, so they only prove the
+new method works. Only the consumer's own build, code I don't own, can detect
+that something it relied on was removed.
+
 ### Step 2: the deprecation path
 
 **What you added.** The signatures that came back, and what they delegate to.
@@ -166,8 +173,23 @@ a `mvn -B clean test` run, since a rerun with nothing to compile prints none).
 **What the deprecation path resolves.** Who can now build that could not build
 during step 1, and who is on which schedule.
 
+After step 1, the untouched front desk app could not build at all; its only
+option was rewriting `FrontDesk.java` on the day the API changed. After step 2
+it builds and all 7 tests pass unchanged, while new code (and the api tests)
+use `createBooking(BookingRequest)`. Schedules: the API team ships the new
+method now. The front desk team migrates its two call sites whenever it
+chooses during the deprecation window. The old overloads are removed only in a
+later, announced release, after callers have moved.
+
 **What the warnings accomplish that a README note would not.** Be concrete
 about where the warning shows up and who sees it without looking for it.
+
+The warning shows up in the front desk team's own build log on every compile,
+naming the exact file, line, and column (`FrontDesk.java:[27,19]` and
+`[33,19]`), and their IDE flags the same calls. They see it without looking
+for it, while a README note only reaches someone who goes and reads our docs.
+The `@deprecated` javadoc names the replacement right where they are working,
+and when the warnings stop appearing, the migration is done.
 
 ---
 
@@ -179,20 +201,81 @@ Not coded. One misuse, one redesign, one cost. Discuss it with your TA.
 
 **What is easy to get wrong.** One specific thing about the API surface.
 
+The `createBooking` overloads take `waitlistKey` and `notes` as plain
+`String`s. Java picks an overload at compile time by argument count and
+static types, so the compiler can't tell which meaning a caller intended: a
+call binds to the overload whose types match, which may not be the one the
+caller meant. The 4-arg and 5-arg overloads differ only by a trailing `String`,
+so dropping an argument or swapping two compiles without complaint.
+
 **The call site.** File and line in `consumer/`, with the call. Show the
 code that a reader cannot understand without opening the javadoc, or that a
 caller could get wrong with the compiler still happy.
 
+`FrontDesk.java:33`:
+
+```java
+return api.createBooking(roomId, startMinute, endMinute, guestName);
+```
+
+Nothing on this line says the guest name is a waitlist key, or that this
+argument changes what happens when the room is busy. Since M1 there is also a
+5-arg overload with notes last. A developer who wants to note "late checkout"
+on a walk-in writes `api.createBooking(roomId, s, e, "late checkout")`. It
+compiles, binds to the 4-arg overload, and the note becomes the waitlist key.
+
 **What goes wrong when it happens.** Silent bad behavior, wrong data, a crash
 somewhere far away?
+
+Silent wrong behavior, no exception (checked by running it against this
+build). `getNotes()` is null, so the note is lost. On a free room the
+schedule shows `CONFIRMED (late checkout)`. On a busy room, a walk-in that
+should be turned away (null) is WAITLISTED instead, and a later
+`cancelAndOfferToWaitlist` (`FrontDesk.java:48`) promotes it to CONFIRMED,
+holding a room for a guest who already left. The bug surfaces far from where
+it was written.
 
 ### The redesign
 
 **The proposal.** Types, enums, factories, or whatever you are proposing. Show
 the new signature and the new call site.
 
+Give the conflict behavior its own type instead of a `String` with a null
+sentinel, and remove the positional `String` overloads after the deprecation
+window:
+
+```java
+public sealed interface OnConflict {
+    record TurnAway() implements OnConflict {}
+    record Waitlist(String key) implements OnConflict {
+        public Waitlist { Objects.requireNonNull(key); }
+    }
+}
+
+// BookingRequest holds an OnConflict instead of a String key:
+public BookingRequest onConflict(OnConflict policy)
+public BookingRequest withNotes(String notes)
+```
+
+New call sites:
+
+```java
+// FrontDesk.java:27
+api.createBooking(BookingRequest.of(roomId, s, e).onConflict(new OnConflict.TurnAway()));
+// FrontDesk.java:33
+api.createBooking(BookingRequest.of(roomId, s, e)
+        .onConflict(new OnConflict.Waitlist(guestName)));
+```
+
 **Why the mistake is now hard or impossible to make.** Point at the mechanism,
 such as the compiler, a validating constructor, or an exhaustive switch.
+
+The compiler. `onConflict` takes an `OnConflict`, so passing a note there is
+a compile error (`incompatible types: String cannot be converted to
+OnConflict`, checked with javac). Notes have exactly one place to go,
+`withNotes(String)`. "Turn away" is a named value instead of `null`, and the
+`Waitlist` record's constructor rejects a null key. Not every `String` needs
+wrapping; this targets the one parameter whose value changes behavior.
 
 ### One tradeoff
 
@@ -200,4 +283,15 @@ such as the compiler, a validating constructor, or an exhaustive switch.
 against the deprecation path you just built, or more types for a newcomer to
 learn. "No real downside" does not count.
 
+Another migration for a team we don't control. The front desk team was just
+pointed at `BookingRequest` by the deprecation warnings. This changes the
+request again, so the same two call sites (`:27`, `:33`) change twice, and we
+run a second deprecation cycle. A smaller cost: a one-line call becomes a
+builder chain with more types for a newcomer to learn.
+
 **When the price is worth paying.** A condition under which it is.
+
+When the mistake is silent and costly (a room held for a guest who left) and
+the callers are teams whose code we can't review, so the compiler has to catch
+it for us. Ship it in the same release that removes the deprecated overloads,
+so the front desk team migrates once instead of twice.
